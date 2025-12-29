@@ -149,7 +149,7 @@ async function handleSignUp() {
     if (error) {
         alert("Sign Up Error: " + error.message);
     } else {
-        alert("Account created! Please check your email or sign in.");
+        alert("Account created! Please sign in.");
         if (data && data.session) {
             handleSessionSuccess(data.session);
         }
@@ -293,6 +293,21 @@ window.handleDeleteLog = async function (id) {
     }
 };
 
+window.handleDeleteProduct = async function (id) {
+    if (!confirm("Are you sure you want to delete this product? It will be hidden from new logs.")) return;
+
+    const { error } = await supabaseClient
+        .from('products')
+        .update({ active: false })
+        .eq('id', id);
+
+    if (error) {
+        alert('Error deleting product: ' + error.message);
+    } else {
+        fetchProducts();
+    }
+};
+
 // --- 7. RENDER FUNCTIONS ---
 function renderProducts() {
     const select = document.getElementById('log-product');
@@ -304,14 +319,19 @@ function renderProducts() {
     list.innerHTML = '';
 
     state.products.forEach(p => {
+        // Dropdown Option
         const option = document.createElement('option');
         option.value = p.id;
         option.textContent = `${p.name} (Rs. ${p.current_price})`;
         select.appendChild(option);
 
+        // Tag with Delete Button
         const tag = document.createElement('div');
-        tag.className = 'bg-slate-100 px-3 py-1 rounded-full text-xs text-slate-700 border border-slate-200';
-        tag.textContent = `${p.name}: Rs. ${p.current_price}`;
+        tag.className = 'bg-slate-100 px-3 py-1 rounded-full text-xs text-slate-700 border border-slate-200 flex items-center gap-2';
+        tag.innerHTML = `
+            <span>${p.name}: Rs. ${p.current_price}</span>
+            <button onclick="window.handleDeleteProduct('${p.id}')" class="text-red-400 hover:text-red-600 font-bold ml-1">×</button>
+        `;
         list.appendChild(tag);
     });
 }
