@@ -28,7 +28,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // B. Set Default UI Values
     const dateInput = document.getElementById('log-date');
     if (dateInput) dateInput.valueAsDate = new Date();
-    
+
     const monthInput = document.getElementById('report-month');
     if (monthInput) monthInput.value = state.currentMonth;
 
@@ -37,7 +37,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // D. Check Login Session
     const { data } = await supabaseClient.auth.getSession();
-    
+
     if (data && data.session) {
         handleSessionSuccess(data.session);
     } else {
@@ -108,43 +108,49 @@ async function handleSignIn() {
     const password = document.getElementById('password').value;
     const errorMsg = document.getElementById('auth-error');
 
-    if(errorMsg) errorMsg.classList.add('hidden');
-    
+    if (errorMsg) errorMsg.classList.add('hidden');
+
     console.log("Logging in...");
-    const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
-    
+    const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+
     if (error) {
-        if(errorMsg) {
+        if (errorMsg) {
             errorMsg.textContent = error.message;
             errorMsg.classList.remove('hidden');
         }
         alert("Login Failed: " + error.message);
+    } else if (data && data.session) {
+        handleSessionSuccess(data.session);
     }
 }
 
 async function handleSignUp() {
     const email = document.getElementById('email').value;
     const password = document.getElementById('password').value;
-    
-    const { error } = await supabaseClient.auth.signUp({ email, password });
+
+    const { data, error } = await supabaseClient.auth.signUp({ email, password });
 
     if (error) {
         alert("Sign Up Error: " + error.message);
     } else {
         alert("Account created! Please check your email or sign in.");
+        if (data && data.session) {
+            handleSessionSuccess(data.session);
+        }
     }
 }
 
 async function handleLogout() {
     await supabaseClient.auth.signOut();
+    handleSessionLogout();
 }
 
 function handleSessionSuccess(session) {
     state.user = session.user;
-    
+
     const emailDisplay = document.getElementById('user-email');
-    if(emailDisplay) emailDisplay.textContent = session.user.email;
-    
+    if (emailDisplay) emailDisplay.textContent = session.user.email;
+
     document.getElementById('auth-view').classList.add('hidden');
     document.getElementById('dashboard-view').classList.remove('hidden');
 
@@ -155,7 +161,7 @@ function handleSessionLogout() {
     state.user = null;
     state.products = [];
     state.logs = [];
-    
+
     document.getElementById('auth-view').classList.remove('hidden');
     document.getElementById('dashboard-view').classList.add('hidden');
 }
@@ -199,14 +205,14 @@ async function handleAddProduct(e) {
     } else {
         nameInput.value = '';
         priceInput.value = '';
-        fetchProducts(); 
+        fetchProducts();
     }
 }
 
 async function fetchLogs() {
     const month = state.currentMonth;
     const startDate = `${month}-01`;
-    
+
     let date = new Date(startDate);
     date.setMonth(date.getMonth() + 1);
     const endDate = date.toISOString().slice(0, 10);
@@ -258,8 +264,8 @@ async function handleAddLog(e) {
     }
 }
 
-window.handleDeleteLog = async function(id) {
-    if(!confirm("Delete this entry?")) return;
+window.handleDeleteLog = async function (id) {
+    if (!confirm("Delete this entry?")) return;
 
     const { error } = await supabaseClient
         .from('logs')
@@ -277,12 +283,12 @@ window.handleDeleteLog = async function(id) {
 function renderProducts() {
     const select = document.getElementById('log-product');
     const list = document.getElementById('products-list');
-    
-    if(!select || !list) return;
+
+    if (!select || !list) return;
 
     select.innerHTML = '<option value="" disabled selected>Select Product</option>';
     list.innerHTML = '';
-    
+
     state.products.forEach(p => {
         const option = document.createElement('option');
         option.value = p.id;
@@ -298,8 +304,8 @@ function renderProducts() {
 
 function renderLogs() {
     const tbody = document.getElementById('logs-table-body');
-    if(!tbody) return;
-    
+    if (!tbody) return;
+
     tbody.innerHTML = '';
 
     if (state.logs.length === 0) {
@@ -332,5 +338,5 @@ function calculateTotal() {
     }, 0);
 
     const totalEl = document.getElementById('total-bill');
-    if(totalEl) totalEl.textContent = `Total: ${total.toFixed(0)}`;
+    if (totalEl) totalEl.textContent = `Total: ${total.toFixed(0)}`;
 }
