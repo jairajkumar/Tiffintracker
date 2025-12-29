@@ -10,7 +10,8 @@ const state = {
     user: null,
     products: [],
     logs: [],
-    currentMonth: new Date().toISOString().slice(0, 7)
+
+    // Defaults will be set in init
 };
 
 // --- 3. INITIALIZATION ---
@@ -26,11 +27,28 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // B. Set Default UI Values
+    // B. Set Default UI Values
     const dateInput = document.getElementById('log-date');
     if (dateInput) dateInput.valueAsDate = new Date();
 
-    const monthInput = document.getElementById('report-month');
-    if (monthInput) monthInput.value = state.currentMonth;
+    // Default Report Range: First day to Last day of current month
+    const now = new Date();
+    const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0); // 0th day of next month is last day of current
+
+    const startInput = document.getElementById('report-start');
+    const endInput = document.getElementById('report-end');
+
+    // Format YYYY-MM-DD (handling local time correctly)
+    const formatDate = (d) => {
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
+
+    if (startInput) startInput.value = formatDate(firstDay);
+    if (endInput) endInput.value = formatDate(lastDay);
 
     // C. Attach Event Listeners
     setupEventListeners();
@@ -92,14 +110,12 @@ function setupEventListeners() {
         productForm.addEventListener('submit', handleAddProduct);
     }
 
-    // Month Change
-    const reportMonth = document.getElementById('report-month');
-    if (reportMonth) {
-        reportMonth.addEventListener('change', (e) => {
-            state.currentMonth = e.target.value;
-            fetchLogs();
-        });
-    }
+    // Date Range Change
+    const reportStart = document.getElementById('report-start');
+    const reportEnd = document.getElementById('report-end');
+
+    if (reportStart) reportStart.addEventListener('change', fetchLogs);
+    if (reportEnd) reportEnd.addEventListener('change', fetchLogs);
 }
 
 // --- 5. AUTH FUNCTIONS ---
@@ -210,18 +226,16 @@ async function handleAddProduct(e) {
 }
 
 async function fetchLogs() {
-    const month = state.currentMonth;
-    const startDate = `${month}-01`;
+    const startDate = document.getElementById('report-start').value;
+    const endDate = document.getElementById('report-end').value;
 
-    let date = new Date(startDate);
-    date.setMonth(date.getMonth() + 1);
-    const endDate = date.toISOString().slice(0, 10);
+    if (!startDate || !endDate) return;
 
     const { data, error } = await supabaseClient
         .from('logs')
         .select(`*, products (name)`)
         .gte('log_date', startDate)
-        .lt('log_date', endDate)
+        .lte('log_date', endDate) // Inclusive
         .order('log_date', { ascending: false });
 
     if (error) {

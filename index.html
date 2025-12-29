@@ -87,9 +87,19 @@
                 <!-- Summary Card -->
                 <div
                     class="bg-blue-50 p-6 rounded-lg border border-blue-100 flex flex-col justify-center items-center text-center">
-                    <h3 class="text-sm text-blue-800 font-medium mb-2">Total Bill for Selected Month</h3>
+                    <h3 class="text-sm text-blue-800 font-medium mb-2">Total Bill for Period</h3>
                     <div class="text-3xl font-bold text-blue-700" id="total-bill">₹0</div>
-                    <input type="month" id="report-month" class="mt-4 p-1 text-sm bg-white border rounded">
+
+                    <div class="flex gap-2 mt-4 w-full">
+                        <div class="flex-1">
+                            <label class="block text-xs text-blue-800 mb-1 text-left">From</label>
+                            <input type="date" id="report-start" class="w-full p-1 text-sm bg-white border rounded">
+                        </div>
+                        <div class="flex-1">
+                            <label class="block text-xs text-blue-800 mb-1 text-left">To</label>
+                            <input type="date" id="report-end" class="w-full p-1 text-sm bg-white border rounded">
+                        </div>
+                    </div>
                 </div>
 
                 <!-- History Table -->
