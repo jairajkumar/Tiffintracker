@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multi-User Tiffin & Expense Tracker</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Supabase JS -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Custom Styles -->
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body class="bg-slate-100 text-slate-800 font-sans min-h-screen">
+
+    <!-- Auth View -->
+    <div id="auth-view" class="container mx-auto px-4 h-screen flex items-center justify-center">
+        <div class="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
+            <h1 class="text-2xl font-bold mb-6 text-center text-blue-600">Tiffin Tracker Login</h1>
+            <form id="auth-form" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium mb-1">Email</label>
+                    <input type="email" id="email"
+                        class="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1">Password</label>
+                    <input type="password" id="password"
+                        class="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                </div>
+                <div class="flex gap-4">
+                    <button type="submit" id="sign-in-btn"
+                        class="flex-1 bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition">Sign In</button>
+                    <button type="button" id="sign-up-btn"
+                        class="flex-1 bg-slate-200 text-slate-700 py-2 rounded hover:bg-slate-300 transition">Sign
+                        Up</button>
+                </div>
+            </form>
+            <p id="auth-error" class="text-red-500 text-sm mt-4 text-center hidden"></p>
+        </div>
+    </div>
+
+    <!-- Dashboard View -->
+    <div id="dashboard-view" class="hidden">
+        <!-- Header -->
+        <header class="bg-white shadow-sm p-4 mb-6">
+            <div class="container mx-auto flex justify-between items-center">
+                <h1 class="text-xl font-bold text-blue-600">Daily Tracker</h1>
+                <div class="flex items-center gap-4">
+                    <span id="user-email" class="text-sm text-slate-500 hidden sm:inline"></span>
+                    <button id="logout-btn" class="text-sm text-red-500 hover:text-red-700">Logout</button>
+                </div>
+            </div>
+        </header>
+
+        <main class="container mx-auto px-4 space-y-6 pb-20">
+            <!-- Quick Log Section -->
+            <section class="bg-white p-6 rounded-lg shadow-sm">
+                <h2 class="text-lg font-semibold mb-4">Add Daily Log</h2>
+                <form id="log-form" class="grid grid-cols-1 sm:grid-cols-4 gap-4 items-end">
+                    <div>
+                        <label class="block text-xs text-slate-500 mb-1">Date</label>
+                        <input type="date" id="log-date" class="w-full p-2 border rounded" required>
+                    </div>
+                    <div>
+                        <label class="block text-xs text-slate-500 mb-1">Item</label>
+                        <select id="log-product" class="w-full p-2 border rounded" required>
+                            <option value="" disabled selected>Select Product</option>
+                            <!-- Options populated via JS -->
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs text-slate-500 mb-1">Quantity</label>
+                        <input type="number" id="log-quantity" step="0.5" value="1" class="w-full p-2 border rounded"
+                            required>
+                    </div>
+                    <button type="submit"
+                        class="bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700 transition h-[42px]">Add
+                        Entry</button>
+                </form>
+            </section>
+
+            <!-- Monthly Report & History -->
+            <section class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- Summary Card -->
+                <div
+                    class="bg-blue-50 p-6 rounded-lg border border-blue-100 flex flex-col justify-center items-center text-center">
+                    <h3 class="text-sm text-blue-800 font-medium mb-2">Total Bill for Selected Month</h3>
+                    <div class="text-3xl font-bold text-blue-700" id="total-bill">₹0</div>
+                    <input type="month" id="report-month" class="mt-4 p-1 text-sm bg-white border rounded">
+                </div>
+
+                <!-- History Table -->
+                <div class="md:col-span-2 bg-white rounded-lg shadow-sm overflow-hidden">
+                    <div class="p-4 border-b flex justify-between items-center">
+                        <h2 class="text-lg font-semibold">History</h2>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm text-left">
+                            <thead class="bg-slate-50 text-slate-600">
+                                <tr>
+                                    <th class="p-3">Date</th>
+                                    <th class="p-3">Item</th>
+                                    <th class="p-3 text-center">Qty</th>
+                                    <th class="p-3 text-right">Price</th>
+                                    <th class="p-3 text-right">Total</th>
+                                    <th class="p-3 text-center">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="logs-table-body" class="divide-y divide-slate-100">
+                                <!-- Rows populated via JS -->
+                                <tr>
+                                    <td colspan="6" class="p-4 text-center text-slate-400">Loading logs...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Manage Products (Collapsible/Modal-like for simplicity inline here) -->
+            <section class="bg-white p-6 rounded-lg shadow-sm">
+                <h2 class="text-lg font-semibold mb-4">Manage Items</h2>
+                <form id="product-form" class="flex gap-4 items-end">
+                    <div class="flex-1">
+                        <input type="text" id="new-product-name" placeholder="Item Name (e.g. Milk)"
+                            class="w-full p-2 border rounded" required>
+                    </div>
+                    <div class="w-24">
+                        <input type="number" id="new-product-price" placeholder="Price"
+                            class="w-full p-2 border rounded" required>
+                    </div>
+                    <button type="submit"
+                        class="bg-slate-800 text-white py-2 px-4 rounded hover:bg-slate-900 transition">Add
+                        Item</button>
+                </form>
+                <div id="products-list" class="mt-4 flex flex-wrap gap-2">
+                    <!-- Product tags populated via JS -->
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Application Logic -->
+    <script src="app.js"></script>
+</body>
+
+</html>
