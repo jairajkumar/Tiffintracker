@@ -102,30 +102,45 @@
                     </div>
                 </div>
 
-                <!-- History Table -->
+                <!-- Calendar View -->
                 <div class="md:col-span-2 bg-white rounded-lg shadow-sm overflow-hidden">
                     <div class="p-4 border-b flex justify-between items-center">
-                        <h2 class="text-lg font-semibold">History</h2>
+                        <button id="prev-month-btn" class="p-2 hover:bg-slate-100 rounded-lg transition">
+                            <svg class="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M15 19l-7-7 7-7" />
+                            </svg>
+                        </button>
+                        <h2 id="calendar-month-title" class="text-lg font-semibold text-slate-700">February 2026</h2>
+                        <button id="next-month-btn" class="p-2 hover:bg-slate-100 rounded-lg transition">
+                            <svg class="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M9 5l7 7-7 7" />
+                            </svg>
+                        </button>
                     </div>
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-sm text-left">
-                            <thead class="bg-slate-50 text-slate-600">
-                                <tr>
-                                    <th class="p-3">Date</th>
-                                    <th class="p-3">Item</th>
-                                    <th class="p-3 text-center">Qty</th>
-                                    <th class="p-3 text-right">Price</th>
-                                    <th class="p-3 text-right">Total</th>
-                                    <th class="p-3 text-center">Action</th>
-                                </tr>
-                            </thead>
-                            <tbody id="logs-table-body" class="divide-y divide-slate-100">
-                                <!-- Rows populated via JS -->
-                                <tr>
-                                    <td colspan="6" class="p-4 text-center text-slate-400">Loading logs...</td>
-                                </tr>
-                            </tbody>
-                        </table>
+                    <div class="calendar-container p-4">
+                        <!-- Days Header -->
+                        <div class="calendar-header grid grid-cols-7 gap-1 mb-2">
+                            <div class="calendar-day-name text-center text-xs font-semibold text-slate-500 py-2">Sun
+                            </div>
+                            <div class="calendar-day-name text-center text-xs font-semibold text-slate-500 py-2">Mon
+                            </div>
+                            <div class="calendar-day-name text-center text-xs font-semibold text-slate-500 py-2">Tue
+                            </div>
+                            <div class="calendar-day-name text-center text-xs font-semibold text-slate-500 py-2">Wed
+                            </div>
+                            <div class="calendar-day-name text-center text-xs font-semibold text-slate-500 py-2">Thu
+                            </div>
+                            <div class="calendar-day-name text-center text-xs font-semibold text-slate-500 py-2">Fri
+                            </div>
+                            <div class="calendar-day-name text-center text-xs font-semibold text-slate-500 py-2">Sat
+                            </div>
+                        </div>
+                        <!-- Calendar Grid -->
+                        <div id="calendar-grid" class="grid grid-cols-7 gap-1">
+                            <!-- Calendar cells populated via JS -->
+                        </div>
                     </div>
                 </div>
             </section>
@@ -151,6 +166,20 @@
                 </div>
             </section>
         </main>
+    </div>
+
+    <!-- Day Details Modal -->
+    <div id="day-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modal-date-title" class="text-lg font-semibold text-slate-700"></h3>
+                <button id="modal-close-btn" class="text-slate-400 hover:text-slate-600 text-2xl">&times;</button>
+            </div>
+            <div id="modal-items-list" class="modal-body">
+                <!-- Items populated via JS -->
+            </div>
+            <div id="modal-day-total" class="modal-footer"></div>
+        </div>
     </div>
 
     <!-- Application Logic -->

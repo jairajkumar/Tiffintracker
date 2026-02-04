@@ -10,6 +10,8 @@ const state = {
     user: null,
     products: [],
     logs: [],
+    calendarDate: new Date(), // Track current calendar month
+    currentModalDate: null, // Track which date's modal is open
 
     // Defaults will be set in init
 };
@@ -116,6 +118,22 @@ function setupEventListeners() {
 
     if (reportStart) reportStart.addEventListener('change', fetchLogs);
     if (reportEnd) reportEnd.addEventListener('change', fetchLogs);
+
+    // Calendar Navigation
+    const prevMonthBtn = document.getElementById('prev-month-btn');
+    const nextMonthBtn = document.getElementById('next-month-btn');
+
+    if (prevMonthBtn) prevMonthBtn.addEventListener('click', () => navigateMonth(-1));
+    if (nextMonthBtn) nextMonthBtn.addEventListener('click', () => navigateMonth(1));
+
+    // Modal Close
+    const modalCloseBtn = document.getElementById('modal-close-btn');
+    const modalOverlay = document.getElementById('day-modal');
+
+    if (modalCloseBtn) modalCloseBtn.addEventListener('click', closeDayModal);
+    if (modalOverlay) modalOverlay.addEventListener('click', (e) => {
+        if (e.target === modalOverlay) closeDayModal();
+    });
 }
 
 // --- 5. AUTH FUNCTIONS ---
@@ -289,7 +307,8 @@ window.handleDeleteLog = async function (id) {
     if (error) {
         alert('Error deleting: ' + error.message);
     } else {
-        fetchLogs();
+        await fetchLogs(); // Refresh calendar and state
+        refreshOpenModal(); // Refresh modal content if open
     }
 };
 
@@ -337,33 +356,137 @@ function renderProducts() {
 }
 
 function renderLogs() {
-    const tbody = document.getElementById('logs-table-body');
-    if (!tbody) return;
+    renderCalendar();
+}
 
-    tbody.innerHTML = '';
+function navigateMonth(direction) {
+    state.calendarDate.setMonth(state.calendarDate.getMonth() + direction);
 
-    if (state.logs.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-slate-400">No logs for this month.</td></tr>';
-        return;
+    // Update date range inputs to match calendar month
+    const firstDay = new Date(state.calendarDate.getFullYear(), state.calendarDate.getMonth(), 1);
+    const lastDay = new Date(state.calendarDate.getFullYear(), state.calendarDate.getMonth() + 1, 0);
+
+    const formatDate = (d) => {
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
+
+    const startInput = document.getElementById('report-start');
+    const endInput = document.getElementById('report-end');
+    if (startInput) startInput.value = formatDate(firstDay);
+    if (endInput) endInput.value = formatDate(lastDay);
+
+    fetchLogs();
+}
+
+function renderCalendar() {
+    const grid = document.getElementById('calendar-grid');
+    const titleEl = document.getElementById('calendar-month-title');
+    if (!grid) return;
+
+    const year = state.calendarDate.getFullYear();
+    const month = state.calendarDate.getMonth();
+
+    // Update title
+    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+        'July', 'August', 'September', 'October', 'November', 'December'];
+    if (titleEl) titleEl.textContent = `${monthNames[month]} ${year}`;
+
+    // Get first day of month and total days
+    const firstDayOfMonth = new Date(year, month, 1);
+    const lastDayOfMonth = new Date(year, month + 1, 0);
+    const startDayOfWeek = firstDayOfMonth.getDay();
+    const totalDays = lastDayOfMonth.getDate();
+
+    // Group logs by date
+    const logsByDate = {};
+    state.logs.forEach(log => {
+        if (!logsByDate[log.log_date]) {
+            logsByDate[log.log_date] = [];
+        }
+        logsByDate[log.log_date].push(log);
+    });
+
+    // Build calendar grid
+    grid.innerHTML = '';
+
+    // Add empty cells for days before first day of month
+    for (let i = 0; i < startDayOfWeek; i++) {
+        const emptyCell = document.createElement('div');
+        emptyCell.className = 'calendar-cell other-month';
+        grid.appendChild(emptyCell);
     }
 
-    state.logs.forEach(log => {
-        const tr = document.createElement('tr');
-        const productName = log.products ? log.products.name : 'Unknown Product';
-        const totalRow = (log.quantity * log.price_snapshot).toFixed(2);
+    // Add cells for each day of the month
+    const today = new Date();
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
 
-        tr.innerHTML = `
-            <td class="p-3 text-slate-600">${log.log_date}</td>
-            <td class="p-3 font-medium text-slate-800">${productName}</td>
-            <td class="p-3 text-center text-slate-600">${log.quantity}</td>
-            <td class="p-3 text-right text-slate-500 text-xs">${log.price_snapshot}</td>
-            <td class="p-3 text-right font-bold text-slate-700">${totalRow}</td>
-            <td class="p-3 text-center">
-                <button onclick="window.handleDeleteLog('${log.id}')" class="text-red-400 hover:text-red-600 font-bold text-lg">X</button>
-            </td>
-        `;
-        tbody.appendChild(tr);
-    });
+    for (let day = 1; day <= totalDays; day++) {
+        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        const dayLogs = logsByDate[dateStr] || [];
+
+        const cell = document.createElement('div');
+        cell.className = 'calendar-cell';
+        if (dateStr === todayStr) cell.classList.add('today');
+
+        // Make entire cell clickable if it has items
+        if (dayLogs.length > 0) {
+            cell.onclick = () => openDayModal(dateStr, dayLogs);
+        }
+
+        // Date number
+        const dateEl = document.createElement('div');
+        dateEl.className = 'calendar-date';
+        dateEl.textContent = day;
+        cell.appendChild(dateEl);
+
+        // Items container
+        const itemsContainer = document.createElement('div');
+        itemsContainer.className = 'calendar-items';
+
+        // Show up to 2 items, then count
+        const maxVisible = 2;
+        dayLogs.slice(0, maxVisible).forEach(log => {
+            const productName = log.products ? log.products.name : 'Unknown';
+            const itemEl = document.createElement('div');
+            itemEl.className = 'calendar-item';
+            itemEl.textContent = `${productName} x${log.quantity}`;
+            itemEl.title = `${productName} - Qty: ${log.quantity} - ₹${(log.quantity * log.price_snapshot).toFixed(2)}`;
+            itemsContainer.appendChild(itemEl);
+        });
+
+        // Show count if more items
+        if (dayLogs.length > maxVisible) {
+            const countEl = document.createElement('div');
+            countEl.className = 'calendar-item-count';
+            countEl.textContent = `+${dayLogs.length - maxVisible} more`;
+            itemsContainer.appendChild(countEl);
+        }
+
+        cell.appendChild(itemsContainer);
+
+        // Daily total if any logs
+        if (dayLogs.length > 0) {
+            const dayTotal = dayLogs.reduce((sum, log) => sum + (log.quantity * log.price_snapshot), 0);
+            const totalEl = document.createElement('div');
+            totalEl.className = 'calendar-total';
+            totalEl.textContent = `₹${dayTotal.toFixed(0)}`;
+            cell.appendChild(totalEl);
+        }
+
+        grid.appendChild(cell);
+    }
+
+    // Fill remaining cells to complete the grid
+    const totalCells = startDayOfWeek + totalDays;
+    const remainingCells = (7 - (totalCells % 7)) % 7;
+    for (let i = 0; i < remainingCells; i++) {
+        const emptyCell = document.createElement('div');
+        emptyCell.className = 'calendar-cell other-month';
+        grid.appendChild(emptyCell);
+    }
 }
 
 function calculateTotal() {
@@ -372,5 +495,89 @@ function calculateTotal() {
     }, 0);
 
     const totalEl = document.getElementById('total-bill');
-    if (totalEl) totalEl.textContent = `Total: ${total.toFixed(0)}`;
+    if (totalEl) totalEl.textContent = `₹${total.toFixed(0)}`;
+}
+
+// --- 8. MODAL FUNCTIONS ---
+function openDayModal(dateStr, dayLogs) {
+    const modal = document.getElementById('day-modal');
+    const titleEl = document.getElementById('modal-date-title');
+    const listEl = document.getElementById('modal-items-list');
+    const totalEl = document.getElementById('modal-day-total');
+
+    if (!modal || !titleEl || !listEl || !totalEl) return;
+
+    // Store current date for refresh
+    state.currentModalDate = dateStr;
+
+    // Format date nicely
+    const date = new Date(dateStr + 'T00:00:00');
+    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+    titleEl.textContent = date.toLocaleDateString('en-IN', options);
+
+    // Build items list
+    renderModalItems(dayLogs);
+
+    // Show modal
+    modal.classList.remove('hidden');
+}
+
+function renderModalItems(dayLogs) {
+    const listEl = document.getElementById('modal-items-list');
+    const totalEl = document.getElementById('modal-day-total');
+
+    if (!listEl || !totalEl) return;
+
+    listEl.innerHTML = '';
+    let dayTotal = 0;
+
+    if (dayLogs.length === 0) {
+        listEl.innerHTML = '<div class="text-center text-slate-400 py-4">No items for this day</div>';
+        totalEl.textContent = 'Day Total: ₹0';
+        return;
+    }
+
+    dayLogs.forEach(log => {
+        const productName = log.products ? log.products.name : 'Unknown';
+        const itemTotal = log.quantity * log.price_snapshot;
+        dayTotal += itemTotal;
+
+        const itemEl = document.createElement('div');
+        itemEl.className = 'modal-item';
+        itemEl.innerHTML = `
+            <div class="modal-item-info">
+                <div class="modal-item-name">${productName}</div>
+                <div class="modal-item-details">Qty: ${log.quantity} × ₹${log.price_snapshot}</div>
+            </div>
+            <div style="display: flex; align-items: center;">
+                <div class="modal-item-total">₹${itemTotal.toFixed(0)}</div>
+                <button class="modal-item-delete" onclick="window.handleDeleteLog('${log.id}')">×</button>
+            </div>
+        `;
+        listEl.appendChild(itemEl);
+    });
+
+    // Update total
+    totalEl.textContent = `Day Total: ₹${dayTotal.toFixed(0)}`;
+}
+
+function refreshOpenModal() {
+    if (!state.currentModalDate) return;
+
+    // Get updated logs for the current modal date
+    const dayLogs = state.logs.filter(log => log.log_date === state.currentModalDate);
+
+    if (dayLogs.length === 0) {
+        // No more items, close modal
+        closeDayModal();
+    } else {
+        // Refresh modal content
+        renderModalItems(dayLogs);
+    }
+}
+
+function closeDayModal() {
+    const modal = document.getElementById('day-modal');
+    if (modal) modal.classList.add('hidden');
+    state.currentModalDate = null;
 }
