@@ -431,10 +431,8 @@ function renderCalendar() {
         cell.className = 'calendar-cell';
         if (dateStr === todayStr) cell.classList.add('today');
 
-        // Make entire cell clickable if it has items
-        if (dayLogs.length > 0) {
-            cell.onclick = () => openDayModal(dateStr, dayLogs);
-        }
+        // Make entire cell clickable (even if no items)
+        cell.onclick = () => openDayModal(dateStr, dayLogs);
 
         // Date number
         const dateEl = document.createElement('div');
@@ -518,6 +516,15 @@ function openDayModal(dateStr, dayLogs) {
     // Build items list
     renderModalItems(dayLogs);
 
+    // Populate product dropdown in modal
+    populateModalProductDropdown();
+
+    // Reset add form state
+    const addForm = document.getElementById('modal-add-form');
+    const addToggle = document.getElementById('modal-add-toggle-btn');
+    if (addForm) addForm.classList.add('hidden');
+    if (addToggle) addToggle.classList.remove('hidden');
+
     // Show modal
     modal.classList.remove('hidden');
 }
@@ -561,19 +568,81 @@ function renderModalItems(dayLogs) {
     totalEl.textContent = `Day Total: ₹${dayTotal.toFixed(0)}`;
 }
 
+function populateModalProductDropdown() {
+    const select = document.getElementById('modal-log-product');
+    if (!select) return;
+
+    select.innerHTML = '<option value="" disabled selected>Select Item</option>';
+    state.products.forEach(p => {
+        const option = document.createElement('option');
+        option.value = p.id;
+        option.textContent = `${p.name} (Rs. ${p.current_price})`;
+        select.appendChild(option);
+    });
+}
+
+window.toggleModalAddForm = function () {
+    const addForm = document.getElementById('modal-add-form');
+    const addToggle = document.getElementById('modal-add-toggle-btn');
+    if (addForm && addToggle) {
+        addForm.classList.toggle('hidden');
+        addToggle.classList.add('hidden');
+        // Focus the select
+        const select = document.getElementById('modal-log-product');
+        if (select) select.focus();
+    }
+};
+
+window.handleModalAddLog = async function (e) {
+    e.preventDefault();
+
+    const productId = document.getElementById('modal-log-product').value;
+    const qty = document.getElementById('modal-log-quantity').value;
+    const dateStr = state.currentModalDate;
+
+    if (!productId || !dateStr) {
+        alert('Please select a product.');
+        return;
+    }
+
+    const product = state.products.find(p => p.id === productId);
+    if (!product) {
+        alert('Product not found.');
+        return;
+    }
+
+    const priceSnapshot = product.current_price;
+
+    const { error } = await supabaseClient
+        .from('logs')
+        .insert([{
+            log_date: dateStr,
+            product_id: productId,
+            quantity: qty,
+            price_snapshot: priceSnapshot
+        }]);
+
+    if (error) {
+        alert('Error logging entry: ' + error.message);
+    } else {
+        // Reset the modal form
+        document.getElementById('modal-log-product').value = '';
+        document.getElementById('modal-log-quantity').value = '1';
+
+        // Refresh data and keep modal open
+        await fetchLogs();
+        refreshOpenModal();
+    }
+};
+
 function refreshOpenModal() {
     if (!state.currentModalDate) return;
 
     // Get updated logs for the current modal date
     const dayLogs = state.logs.filter(log => log.log_date === state.currentModalDate);
 
-    if (dayLogs.length === 0) {
-        // No more items, close modal
-        closeDayModal();
-    } else {
-        // Refresh modal content
-        renderModalItems(dayLogs);
-    }
+    // Always refresh modal content (even if empty)
+    renderModalItems(dayLogs);
 }
 
 function closeDayModal() {

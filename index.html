@@ -178,6 +178,24 @@
             <div id="modal-items-list" class="modal-body">
                 <!-- Items populated via JS -->
             </div>
+
+            <!-- Add Item Form inside Modal -->
+            <div class="modal-add-section">
+                <button id="modal-add-toggle-btn" class="modal-add-toggle" onclick="toggleModalAddForm()">
+                    <span class="modal-add-icon">+</span> Add Item
+                </button>
+                <form id="modal-add-form" class="modal-add-form hidden" onsubmit="handleModalAddLog(event)">
+                    <div class="modal-form-row">
+                        <select id="modal-log-product" class="modal-form-input" required>
+                            <option value="" disabled selected>Select Item</option>
+                        </select>
+                        <input type="number" id="modal-log-quantity" step="0.5" value="1" min="0.5"
+                            class="modal-form-input modal-qty-input" placeholder="Qty" required>
+                        <button type="submit" class="modal-form-submit">Add</button>
+                    </div>
+                </form>
+            </div>
+
             <div id="modal-day-total" class="modal-footer"></div>
         </div>
     </div>
